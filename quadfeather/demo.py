@@ -6,29 +6,29 @@ import pyarrow as pa
 
 import sys
 
-dates = []
+DATES = []
 
 # generate some iso dates that may lack a month field
 for y in range(1900, 2020):
-    dates.append(f"{y}")
+    DATES.append(f"{y}")
     for m in range(1, 13):
-        dates.append(f"{y}-{m:02d}")
+        DATES.append(f"{y}-{m:02d}")
         for d in range(1, 6):
-            dates.append(f"{y}-{m:02d}-{d:02d}")
+            DATES.append(f"{y}-{m:02d}-{d:02d}")
 
 
 def rbatch(SIZE):
     SIZE = int(SIZE)
+
     frames = []
-    classes = ["Banana", "Strawberry", "Apple", "Mulberry"]
-    for c in classes:
+    for c in ["Banana", "Strawberry", "Apple", "Mulberry"]:
         mid_x = np.random.normal()
         scale = random.random()
         x = random.normal(loc=mid_x, scale=(scale + 0.5) / 3, size=SIZE // 4)
         mid_y = np.random.normal()
         scale = random.random()
         y = random.normal(loc=mid_y, scale=(scale + 0.5) / 3, size=SIZE // 4)
-        date = random.choice(dates, size=len(x), replace=True)
+        date = random.choice(DATES, size=len(x), replace=True)
         frame = pa.table(
             {
                 "x": x,
@@ -42,8 +42,7 @@ def rbatch(SIZE):
     return pa.concat_tables(frames)
 
 
-def demo_parquet(path, size, batchsize=2e5):
-    b = rbatch(size)
+def demo_parquet(path, size, batchsize=2e5) -> None:
     writer = None
     written = 0
     while written < size:
@@ -56,14 +55,17 @@ def demo_parquet(path, size, batchsize=2e5):
         written = written + batchsize
 
 
-def main(path="tmp.csv", SIZE=None):
+def main(path="tmp.csv", SIZE=None) -> None:
     if SIZE is None:
         try:
             SIZE = int(sys.argv[1])
-        except:
+        except ValueError:
             SIZE = 100_000
+
     frames = rbatch(SIZE).to_pandas()
     frames = frames.sample(frac=1)
+
     # Add an unseen level at the very end.
     frames.iloc[-1, -1] = "2040-01-01"
+
     frames.to_csv(path, index=False)

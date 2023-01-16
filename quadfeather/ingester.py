@@ -38,7 +38,9 @@ class Ingester:
 
 class ArrowIngester(Ingester):
     """
-    The IPC format, not the feather format.
+    Ingesting IPC serialization format, not the feather format. It is slightly
+    different from the feather format, because it lacks a schema at the
+    bottom.)
     """
 
     def batches(self):
@@ -60,6 +62,10 @@ class CSVIngester(Ingester):
 
 
 class FeatherIngester(Ingester):
+    """
+    Ingesting the feather format.
+    """
+
     def batches(self):
         for file in self.files:
             fin = feather.read_table(file, columns=self.columns)
@@ -70,6 +76,10 @@ class FeatherIngester(Ingester):
 
 
 class ParquetIngester(Ingester):
+    """
+    Ingesting the parquet format.
+    """
+
     def batches(self):
         for f in self.files:
             f = pq.ParquetFile(f)
@@ -82,15 +92,21 @@ class ParquetIngester(Ingester):
 def get_ingester(
     files: List[Path], destructive=False, columns: Optional[List[str]] = None
 ) -> Ingester:
-    assert (
-        len(set([f.suffix for f in files])) == 1
-    ), "All files must be of the same type"
-    if files[0].suffix == ".parquet":
+    """
+    Returns the correct ingester (i.e. ArrowIngester, FeatherIngester or
+    ParquetIngester), depending on the suffix of the files provided.
+    """
+
+    suffixes = list(set([f.suffix for f in files]))
+
+    assert len(suffixes) == 1, "All files must be of the same type"
+
+    suffix = suffixes[0]
+    if suffix == ".parquet":
         return ParquetIngester(files, destructive=destructive, columns=columns)
-    elif files[0].suffix == ".feather":
+    elif suffix == ".feather":
         return FeatherIngester(files, destructive=destructive, columns=columns)
-    elif files[0].suffix == ".arrow":
-        # This is the arrow IPC format, which can be slightly different (lacks a schema at the bottom.)
+    elif suffix == ".arrow":
         return ArrowIngester(files, destructive=destructive, columns=columns)
     else:
-        raise Exception("Unsupported file type", files[0].suffix)
+        raise Exception(f"Unsupported file type: {suffix}")
